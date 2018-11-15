@@ -1,7 +1,5 @@
 (ns parkrun-app.core
-  (:require [clojure.string :as string]
-            [net.cgrand.enlive-html :as html]
-            [clj-http.client :as http]))
+  (:require [net.cgrand.enlive-html :as html]))
 
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
@@ -34,23 +32,19 @@
 
 (defn extract-data
   [dates]
-  (let [parkrun (html/select (second (first dates)) [:li])]
-    ((juxt (partial map #(->> %
-                        (:content)
-                        (second)))
-           (partial map #(->> %
-                        (:content)
-                        (first)
-                        (:attrs)
-                        (:href)))
-           (partial map #(->> %
-                        (:content)
-                        (first)
-                        (:content)
-                        (first)))) parkrun)))
+  (let [parkruns (html/select (second (first dates)) [:li])]
+    (map (juxt #(->> %
+                     (:content)
+                     (second))
+               #(->> %
+                     (:content)
+                     (first)
+                     (:attrs)
+                     (:href))
+               #(->> %
+                      (:content)
+                      (first)
+                      (:content)
+                      (first))) parkruns)))
 
 (extract-data dates)
-
-(partition 3 (apply interleave (extract-data dates)))
-
-dates

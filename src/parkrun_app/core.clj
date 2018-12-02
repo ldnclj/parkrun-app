@@ -1,15 +1,14 @@
 (ns parkrun-app.core
-  (:require [net.cgrand.enlive-html :as html]))
+  (:require [chime :refer [chime-at]]
+            [clj-time.core :as t]
+            [clj-time.format :as f]
+            [clj-time.periodic :as p]
+            [net.cgrand.enlive-html :as html])
+  (:import [org.joda.time DateTimeConstants DateTimeZone]))
 
-(defn fetch-url [url]
-  (html/html-resource (java.net.URL. url)))
-
-(def scrape
-  (fetch-url "https://www.parkrun.com/cancellations/"))
-
-(def saturday "2018-09-29")
-
-(def sunday "2018-09-30")
+(defn fetch-url
+  []
+  (html/html-resource (java.net.URL. "https://www.parkrun.com/cancellations/")))
 
 (defn get-dates
   [scrape]
@@ -19,7 +18,7 @@
        (partition 2)))
 
 (defn dates-of-interest?
-  [scrape]
+  [scrape {:keys [saturday sunday]}]
   (let [date (->> scrape
                   (first)
                   (:content)
@@ -28,23 +27,58 @@
             (= sunday date))
       true)))
 
-(def dates (filter dates-of-interest? (get-dates scrape)))
-
 (defn extract-data
   [dates]
   (let [parkruns (html/select (second (first dates)) [:li])]
-    (map (juxt #(->> %
-                     (:content)
-                     (second))
-               #(->> %
-                     (:content)
-                     (first)
-                     (:attrs)
-                     (:href))
-               #(->> %
-                      (:content)
-                      (first)
-                      (:content)
-                      (first))) parkruns)))
+    (map #(zipmap [:reason :url :name] %)
+         (map (juxt #(->> %
+                          (:content)
+                          (second))
+                    #(->> %
+                          (:content)
+                          (first)
+                          (:attrs)
+                          (:href))
+                    #(->> %
+                          (:content)
+                          (first)
+                          (:content)
+                          (first))) parkruns))))
 
-(extract-data dates)
+(defn format-message
+  [parkrun]
+  (when (not-empty parkrun)
+    (str "Hello! Your " (:name parkrun)
+         " will not happen this weekend. The reason" (:reason parkrun)
+         ". For more information, check out " (:url parkrun))))
+
+(defn get-weekend
+  []
+  (take 3 (->> (p/periodic-seq (.. (t/now)
+                                   (withZone (DateTimeZone/forID "Europe/London")))
+                               (-> 1 t/days))
+               (filter (comp #{DateTimeConstants/FRIDAY  ;; keep Friday to use in run-job later (or remove it)
+                            DateTimeConstants/SATURDAY
+                            DateTimeConstants/SUNDAY}
+                          #(.getDayOfWeek %))))))
+
+(defn format-saturday-and-sunday
+  []
+  (let [weekend (rest (map #(f/unparse (f/formatter "yyyy-MM-dd") %) (get-weekend)))]
+    {:saturday (first weekend)
+     :sunday   (second weekend)}))
+
+(defn run-job
+  [parkrun-of-interest]
+  (chime-at [(-> 1 t/seconds t/from-now)]  ;; for the sake of running it now and seeing all the fun!
+            (fn [time]
+              (->> (fetch-url)
+                   (get-dates)
+                   (filter #(dates-of-interest? % (format-saturday-and-sunday)))
+                   (extract-data)
+                   (filter #(= ( :name %) parkrun-of-interest))
+                   (first)
+                   (format-message)
+                   (println)))))
+
+(run-job "Ally Pally parkrun")

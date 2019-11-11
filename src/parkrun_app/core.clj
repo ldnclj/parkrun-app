@@ -6,9 +6,13 @@
             [net.cgrand.enlive-html :as html])
   (:import [org.joda.time DateTimeConstants DateTimeZone]))
 
-(defn fetch-url
-  []
-  (html/html-resource (java.net.URL. "https://www.parkrun.com/cancellations/")))
+(defn fetch-url []
+  (with-open [inputstream (-> (java.net.URL. "https://www.parkrun.com/cancellations/")
+                              .openConnection
+                              (doto (.setRequestProperty "User-Agent"
+                                                         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:70.0) Gecko/20100101 Firefox/70.0"))
+                              .getContent)]
+    (html/html-resource inputstream)))
 
 (defn get-dates
   [scrape]

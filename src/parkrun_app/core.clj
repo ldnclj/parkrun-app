@@ -85,4 +85,7 @@
                    (format-message)
                    (println)))))
 
-(run-job "Ally Pally parkrun")
+(defn -main
+  [& args]
+  (run-job "Ally Pally parkrun")
+  )

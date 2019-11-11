@@ -1,6 +1,7 @@
 (ns parkrun-app.core
   (:require [chime :refer [chime-at]]
             [clj-time.core :as t]
+            [clojure.tools.trace :as trace]
             [clj-time.format :as f]
             [clj-time.periodic :as p]
             [net.cgrand.enlive-html :as html])
@@ -74,18 +75,21 @@
 
 (defn run-job
   [parkrun-of-interest]
-  (chime-at [(-> 1 t/seconds t/from-now)]  ;; for the sake of running it now and seeing all the fun!
-            (fn [time]
-              (->> (fetch-url)
-                   (get-dates)
-                   (filter #(dates-of-interest? % (format-saturday-and-sunday)))
-                   (extract-data)
-                   (filter #(= ( :name %) parkrun-of-interest))
-                   (first)
-                   (format-message)
-                   (println)))))
+  #_(chime-at [(-> 1 t/seconds t/from-now)]  ;; for the sake of running it now and seeing all the fun!
+            (fn [time]))
+  (->> (fetch-url)
+       (get-dates)
+       (filter #(dates-of-interest? % (format-saturday-and-sunday)))
+       (extract-data)
+       (filter #(= ( :name %) parkrun-of-interest))
+       (first)
+       (format-message)
+       (println)))
 
 (defn -main
   [& args]
-  (run-job "Ally Pally parkrun")
+  (run-job "Croxteth Hall parkrun"
+           #_"Ally Pally parkrun")
   )
+
+;(trace/trace-ns 'parkrun-app.core)

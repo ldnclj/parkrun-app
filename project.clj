@@ -6,4 +6,5 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [enlive "1.1.6"]
+                 [org.clojure/tools.trace "0.7.10"]
                  [jarohen/chime "0.2.2"]])
